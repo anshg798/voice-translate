@@ -1,7 +1,6 @@
 from fastapi import FastAPI, UploadFile, File, Query, HTTPException
 from fastapi.responses import FileResponse, JSONResponse
 import speech_recognition as sr
-from googletrans import Translator
 from gtts import gTTS
 import tempfile
 import os
