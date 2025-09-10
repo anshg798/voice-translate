@@ -5,7 +5,8 @@ from googletrans import Translator
 from gtts import gTTS
 import tempfile
 import os
-from pydub import AudioSegment  # for converting formats
+from pydub import AudioSegment 
+from deep_translator import GoogleTranslator # for converting formats
 
 app = FastAPI()
 
@@ -45,8 +46,7 @@ async def speech_translate(
 
         # Step 2: Translate Hindi → Tamil
         try:
-            translator = Translator()
-            tamil_text = translator.translate(hindi_text, src="hi", dest="ta").text
+            tamil_text = GoogleTranslator(source="hi", target="ta").translate(hindi_text)
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Translation failed: {str(e)}")
 
