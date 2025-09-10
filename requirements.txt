@@ -6,3 +6,4 @@ gTTS
 pydub
 pydantic
 deep-translator
+python-multipart
