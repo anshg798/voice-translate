@@ -84,3 +84,6 @@ def download_audio(path: str):
         ext = path.split(".")[-1]
         return FileResponse(path, media_type=f"audio/{ext}", filename=f"tamil_output.{ext}")
     return {"error": "Audio file not found."}
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=False)
