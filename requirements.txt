@@ -1,8 +1,7 @@
-python_version=="3.11.*"
 fastapi
-uvicorn[standard]
+uvicorn
 openai-whisper
 gTTS
 deep-translator
-pydub
+pydub==0.25.1
 
