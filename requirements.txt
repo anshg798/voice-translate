@@ -1,7 +1,8 @@
 fastapi
 uvicorn
-openai-whisper
+whisper
+torch
 gTTS
 deep-translator
-pydub==0.25.1
-
+pydub
+ffmpeg-python
