@@ -4,4 +4,4 @@ openai-whisper
 gTTS
 deep-translator
 pydub
-pyaudioop
+git+https://github.com/spotlightishere/pyaudioop.git
