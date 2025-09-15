@@ -1,30 +1,33 @@
 from fastapi import FastAPI, UploadFile, File, Query, HTTPException
 from fastapi.responses import FileResponse, JSONResponse
-import speech_recognition as sr
+import whisper
 from gtts import gTTS
-import tempfile
-import os
-from pydub import AudioSegment 
-from deep_translator import GoogleTranslator # for converting formats
+from deep_translator import GoogleTranslator
+from pydub import AudioSegment
+import tempfile, os, io
 
 app = FastAPI()
 
+os.environ["PATH"] += os.pathsep + r"C:\ffmpeg\bin"
+
+# Load Whisper once (faster reuse)
+model = whisper.load_model("base")
+
 @app.get("/")
 def root():
-    return {"message": "Hindi → Tamil Speech Translator API"}
+    return {"message": "Universal Speech Translator API with Whisper (Auto-detect speech language)"}
 
 
 @app.post("/speech_translate")
 async def speech_translate(
     file: UploadFile = File(...),
+    target_lang: str = Query(..., description="Target language code (e.g., 'en', 'ta', 'fr')"),
     format: str = Query("mp3", enum=["mp3", "wav", "ogg"])
 ):
     """
-    Upload Hindi speech (.wav), translate to Tamil, and return Tamil speech in desired format.
+    Upload speech (any language), auto-detect with Whisper,
+    translate into target_lang, and return translated audio.
     """
-
-    if not file.filename.lower().endswith(".wav"):
-        raise HTTPException(status_code=400, detail="Only .wav files are supported for input.")
 
     try:
         # Save uploaded audio temporarily
@@ -32,43 +35,43 @@ async def speech_translate(
             temp_audio.write(await file.read())
             temp_path = temp_audio.name
 
-        # Step 1: Speech to Hindi text
-        recognizer = sr.Recognizer()
-        with sr.AudioFile(temp_path) as source:
-            audio = recognizer.record(source)
-            try:
-                hindi_text = recognizer.recognize_google(audio, language="hi-IN")
-            except sr.UnknownValueError:
-                raise HTTPException(status_code=400, detail="Could not understand the Hindi speech.")
-            except sr.RequestError:
-                raise HTTPException(status_code=503, detail="Speech recognition service unavailable.")
-
-        # Step 2: Translate Hindi → Tamil
+        # Step 1: Transcribe & detect language with Whisper
         try:
-            tamil_text = GoogleTranslator(source="hi", target="ta").translate(hindi_text)
+            result = model.transcribe(temp_path)
+            text = result["text"].strip()
+            detected_lang = result.get("language", "unknown")
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Whisper transcription failed: {str(e)}")
+
+        # Step 2: Translate text
+        try:
+            translated_text = GoogleTranslator(source="auto", target=target_lang).translate(text)
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Translation failed: {str(e)}")
 
-        # Step 3: Tamil text-to-speech (gTTS only supports MP3 natively)
-        mp3_file = temp_path.replace(".wav", ".mp3")
+        # Step 3: Text → Speech (gTTS → MP3)
+        mp3_bytes = io.BytesIO()
         try:
-            tts = gTTS(text=tamil_text, lang="ta")
-            tts.save(mp3_file)
+            tts = gTTS(text=translated_text, lang=target_lang)
+            tts.write_to_fp(mp3_bytes)
+            mp3_bytes.seek(0)
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"TTS failed: {str(e)}")
 
-        # Step 4: Convert MP3 → requested format (if needed)
-        out_file = mp3_file
-        if format != "mp3":
-            sound = AudioSegment.from_mp3(mp3_file)
-            out_file = mp3_file.replace(".mp3", f".{format}")
-            sound.export(out_file, format=format)
+        # Step 4: Convert MP3 → requested format
+        out_file = tempfile.NamedTemporaryFile(delete=False, suffix=f".{format}")
+        if format == "mp3":
+            with open(out_file.name, "wb") as f:
+                f.write(mp3_bytes.read())
+        else:
+            sound = AudioSegment.from_file(io.BytesIO(mp3_bytes.read()), format="mp3")
+            sound.export(out_file.name, format=format)
 
-        # Return Tamil audio + text
         return JSONResponse({
-            "hindi_text": hindi_text,
-            "tamil_text": tamil_text,
-            "download_url": f"/download_audio?path={out_file}"
+            "detected_language": detected_lang,
+            "original_text": text,
+            "translated_text": translated_text,
+            "download_url": f"/download_audio?path={out_file.name}"
         })
 
     finally:
@@ -78,11 +81,13 @@ async def speech_translate(
 
 @app.get("/download_audio")
 def download_audio(path: str):
-    """Serve generated Tamil audio file"""
+    """Serve generated audio file"""
     if os.path.exists(path):
         ext = path.split(".")[-1]
-        return FileResponse(path, media_type=f"audio/{ext}", filename=f"tamil_output.{ext}")
+        return FileResponse(path, media_type=f"audio/{ext}", filename=f"output.{ext}")
     return {"error": "Audio file not found."}
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=False)
