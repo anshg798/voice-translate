@@ -9,9 +9,9 @@ import tempfile, os, io, sys
 # Fix for Python 3.12+ (pyaudioop → _audioop)
 # -------------------------------
 try:
-    import pyaudioop  # Old name (Python <= 3.11)
-except ModuleNotFoundError:
-    import _audioop as pyaudioop  # New name (Python 3.12+)
+    import audioop as pyaudioop  # Python <= 3.11
+except ImportError:
+    import _audioop as pyaudioop   # New name (Python 3.12+)
     sys.modules["pyaudioop"] = pyaudioop
 
 from pydub import AudioSegment
