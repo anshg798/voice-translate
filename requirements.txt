@@ -1,5 +1,5 @@
 torch==2.5.1
-whisper
+openai-whisper
 fastapi
 uvicorn
 gTTS
