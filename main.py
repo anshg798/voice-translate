@@ -3,8 +3,18 @@ from fastapi.responses import FileResponse, JSONResponse
 import whisper
 from gtts import gTTS
 from deep_translator import GoogleTranslator
+import tempfile, os, io, sys
+
+# -------------------------------
+# Fix for Python 3.12+ (pyaudioop → _audioop)
+# -------------------------------
+try:
+    import pyaudioop  # Old name (Python <= 3.11)
+except ModuleNotFoundError:
+    import _audioop as pyaudioop  # New name (Python 3.12+)
+    sys.modules["pyaudioop"] = pyaudioop
+
 from pydub import AudioSegment
-import tempfile, os, io
 
 app = FastAPI()
 
