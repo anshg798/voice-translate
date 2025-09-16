@@ -21,7 +21,7 @@ app = FastAPI()
 os.environ["PATH"] += os.pathsep + r"C:\ffmpeg\bin"
 
 # Load Whisper once (faster reuse)
-model = whisper.load_model("base")
+model = whisper.load_model("tiny")
 
 @app.get("/")
 def root():
